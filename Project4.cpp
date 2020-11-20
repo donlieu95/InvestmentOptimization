@@ -53,17 +53,22 @@ void populate(struct investment investmentList[])
 //Polulate initial array
 {
 	srand (time(NULL));
+	int multiplier;
 	for(int i = 0; i < collection_size; i++)
 	{
 		int exp = rand() % 3 + 1;
+		//multiplier = rand() % 5 + 0;
 		investmentList[i].cost = rand() % maxRand + minRand;
 		investmentList[i].risk = rand() % 100 + 1;
-		investmentList[i].potential = ceil( pow( (investmentList[i].cost * (1+(investmentList[i].risk / 100)) ), exp) ); 
+		//investmentList[i].potential = ceil( investmentList[i].cost * (pow( (1+(investmentList[i].risk / 100) ), exp) ) ); 
+		//investmentList[i].potential = ceil( investmentList[i].cost + (investmentList[i].cost * (investmentList[i].risk / 100) * multiplier ) );
+		investmentList[i].potential = ceil( investmentList[i].cost * (pow( ((100 / (100 - investmentList[i].risk) ) ), exp) ) );
 
 		cout << "Investment " << i+1 << ":" << endl;
 		cout << "Cost: $" << investmentList[i].cost << endl;
 		cout << "Risk: " << investmentList[i].risk << "%" << endl;
 		cout << "Potential: $" << investmentList[i].potential << endl;
+		//cout << "Exp: " << exp << "Multipler: " << (pow( ((100 / (100 - investmentList[i].risk) ) ), exp) ) << endl;
 		cout << endl;
 	}
 }
