@@ -11,12 +11,12 @@
 
 using namespace std;
 
-const int collection_size = 60, minRand = 1, maxRand = 2000, timeLimit = 60;
+const int collection_size = 10, minRand = 1, maxRand = 2000, timeLimit = 5;
 int availableFunds = ceil(maxRand * (collection_size / 4));
 int chromPop = ceil(1.65 * pow(2, (0.21 * collection_size)));
-int terminationPop = ceil(chromPop * 0.00025);
+int terminationPop = ceil( log(chromPop) );
 int mutationRate = ceil(chromPop * 0.02);
-int sigCoefficient = ceil( maxRand * .2 );
+int sigCoefficient = ceil( maxRand * .005 );
 
 struct chromosome
 {
@@ -56,13 +56,13 @@ void populate(struct investment investmentList[])
 	int multiplier;
 	for(int i = 0; i < collection_size; i++)
 	{
-		int exp = rand() % 3 + 1;
+		int exp = rand() % 4 + 1;
 		//multiplier = rand() % 5 + 0;
 		investmentList[i].cost = rand() % maxRand + minRand;
-		investmentList[i].risk = rand() % 100 + 1;
+		investmentList[i].risk = rand() % 99 + 1;
 		//investmentList[i].potential = ceil( investmentList[i].cost * (pow( (1+(investmentList[i].risk / 100) ), exp) ) ); 
 		//investmentList[i].potential = ceil( investmentList[i].cost + (investmentList[i].cost * (investmentList[i].risk / 100) * multiplier ) );
-		investmentList[i].potential = ceil( investmentList[i].cost * (pow( ((100 / (100 - investmentList[i].risk) ) ), exp) ) );
+		investmentList[i].potential = investmentList[i].cost + ceil( investmentList[i].cost * (pow( ((100 / (100 - investmentList[i].risk) ) ), exp) ) );
 
 		cout << "Investment " << i+1 << ":" << endl;
 		cout << "Cost: $" << investmentList[i].cost << endl;
@@ -110,7 +110,7 @@ struct chromosome initialChromosome(struct investment investmentList[])
 		newChromosome.totalRisk = 1;
 	}
 	newChromosome.unusedFunds = availableFunds - newChromosome.totalCost; 
-	newChromosome.dominance = ceil( ( (newChromosome.totalPotential / newChromosome.totalRisk) - (newChromosome.unusedFunds * ( collection_size/5 ) ) ) / sigCoefficient);
+	newChromosome.dominance = ceil( ( (newChromosome.totalPotential / newChromosome.totalRisk) / sigCoefficient) - (newChromosome.unusedFunds / (sigCoefficient) ) );
 	
 	if (newChromosome.dominance < 0)
 	{
@@ -193,7 +193,7 @@ struct chromosome generateChild(struct chromosome parent1, struct chromosome par
 		child.totalRisk = 1;
 	}
 	child.unusedFunds = availableFunds - child.totalCost;
-	child.dominance = ceil( ( (child.totalPotential / child.totalRisk) - (child.unusedFunds * (collection_size/5) ) ) / sigCoefficient);
+	child.dominance = ceil( ( (child.totalPotential / child.totalRisk)  / sigCoefficient) - (child.unusedFunds / (sigCoefficient) ) );
 
 	if (child.dominance < 0)
 	{
@@ -216,7 +216,7 @@ int main ()
 	struct investment investmentList[collection_size];
 	bool done = false, timedOut = false;
 
-	clock_t timeStart = clock();
+	clock_t timeStart = clock(), timeEnd;
 	populate(investmentList);
 	//Populate collection of investments
 	
@@ -230,6 +230,16 @@ int main ()
 		{
 			maxDominance = parents[i].dominance;
 		}
+		/*for (int j = 0; j < i; j++)
+		{
+			if (cEquals(parents[i], parents[j]) == true)
+				//First generation must have no identical chromosomes.
+				{
+					i--;
+					break;
+				}
+		}*/
+		
 	}
 	
 	
@@ -255,6 +265,8 @@ int main ()
 		//Timeout
 		{
 			cout << "\nCOMPILE TIME LIMIT REACHED." << endl;
+			cout << "No solutions were found to be significantly more optimal than others within allotted time." << endl;
+			timeEnd = clock();
 			timedOut = true;
 			break;
 		}
@@ -365,7 +377,7 @@ int main ()
 	}
 	else
 	{
-		cout << "Program has converged on the following dominant solution(s):\n" << endl;
+		cout << "Program offers the following solution(s):\n" << endl;
 		for (int i = 0; i < terminationPop; i++)
 		{
 			if (parents[i].dominant == true)
@@ -392,7 +404,7 @@ int main ()
 	cout << "Total funds available: $" << availableFunds << endl;	
 	cout << "Population size: " << chromPop << endl;
 	cout << "Pareto termination size: " << terminationPop << endl;
-	cout << "Completed in " << generationCount << " generations." << endl;
+	cout << "Completed in " << generationCount << " generations and " << (timeStart - timeEnd) << " clock ticks" << endl;
 
 	
 	return 0;
