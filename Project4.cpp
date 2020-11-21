@@ -20,7 +20,7 @@
 
 using namespace std;
 
-const int collection_size = 30, minRand = 1, maxRand = 2000, timeLimit = 5;
+const int collection_size = 60, minRand = 1, maxRand = 2000, timeLimit = 5;
 //Parameters can be manipulated by user
 int availableFunds = ceil(maxRand * (collection_size / 4));
 //Available funds as a function of maximum random value and collection size
@@ -87,6 +87,13 @@ struct chromosome initialChromosome(struct investment investmentList[])
 //Create generation 0 of parent chromosomes by random assignment of investments.
 {
 	struct chromosome newChromosome;
+
+	newChromosome.totalCost = 0;
+	newChromosome.totalRisk = 0;
+	newChromosome.totalPotential = 0;
+	newChromosome.unusedFunds = 0;
+	newChromosome.dominance = 0;
+
 	for(int j = 0; j < collection_size; j++)
 	{
 		int randomAllele = rand() % 100 + 1;
@@ -224,39 +231,37 @@ struct chromosome generateChild(struct chromosome parent1, struct chromosome par
 struct chromosome hillClimb(struct chromosome climber, int position, struct investment investmentList[])
 {
 	struct chromosome option1 = climber, option2 = climber;
+	int predom1, predom2;
 	//Set both options identical to original candidate
 	//Modify second option at passed position
 
 	if (option2.sequence[position] == '1')
 	{
+		//Divest and subtract cost, risk, and potential
 		option2.sequence[position] = '0';
+
+		option2.totalCost -= investmentList[position].cost;
+		option2.totalRisk -= ceil( ( (investmentList[position].risk) * investmentList[position].cost ) / 100 );
+		option2.totalPotential -= (investmentList[position].potential);
 	}
 	else
 	{
 		option2.sequence[position] = '1';
-	}
+		//Calculate cost, risk, and potential
+		option2.totalCost += investmentList[position].cost;
 
-	for (int i = 0; i < collection_size; i++)
-	{
-		
-		if (option2.sequence[i] == '1')
+		//Cannot exceed available funds
+		if (option2.totalCost > availableFunds)
+		//Return original candidate.
 		{
-			//Calculate cost, risk, and potential
-			option2.totalCost += investmentList[i].cost;
-
-			//Cannot exceed available funds
-			if (option2.totalCost > availableFunds)
-			//Return original candidate.
-			{
-				return option1;
-			}
-			else
-			{
-				option2.totalRisk += ceil( ( (investmentList[i].risk) * investmentList[i].cost ) / 100 );
-				option2.totalPotential += (investmentList[i].potential);
-			}
-			
+			return option1;
 		}
+		else
+		{
+			option2.totalRisk += ceil( ( (investmentList[position].risk) * investmentList[position].cost ) / 100 );
+			option2.totalPotential += (investmentList[position].potential);
+		}
+		
 	}
 
 	//Calculate dominance
@@ -279,7 +284,11 @@ struct chromosome hillClimb(struct chromosome climber, int position, struct inve
 	option2.dominant = false;
 	//Chromosomes are only considered dominant after the dominance values are compared to those of other chromosomes
 
-	if (option2.dominance > option1.dominance)
+	predom1 = (option1.totalPotential / option1.totalRisk) - option1.unusedFunds;
+	predom2 = (option2.totalPotential / option2.totalRisk) - option2.unusedFunds;
+	//Due to the method of changing one allele at a time, the use of sigCoefficient can result in a lack of optimization in hill-climbing.  Predom does not take sigCoefficient into account so that hill-climbing can choose new solutions that are more optimal, but not significantly more optimal. Dominance is still recorded so it can be compared against the genetic algorithm.
+
+	if (predom2 > predom1)
 	{
 		return option2;
 	}
@@ -287,6 +296,23 @@ struct chromosome hillClimb(struct chromosome climber, int position, struct inve
 	{
 		return option1;
 	}
+}
+
+void printChrom(struct chromosome chrom)
+//Prints values of chromosomes
+//For use in testing
+{
+	for (int i = 0; i < collection_size; i++)
+	{
+		cout << chrom.sequence[i];
+	}
+	cout << endl;
+	cout << "Total cost: $" << chrom.totalCost << endl;
+	cout << "Total risk: $" << chrom.totalRisk << endl;
+	cout << "Total potential: $" << chrom.totalPotential << endl;
+	cout << "Unused funds: $" << chrom.unusedFunds << endl;
+	cout << "Dominance: " << chrom.dominance << endl;
+	cout << "Dominant: " << chrom.dominant << endl;
 }
 
 int main ()
