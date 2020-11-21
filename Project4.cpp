@@ -27,7 +27,7 @@ int chromPop = ceil(1.65 * pow(2, (0.21 * collection_size)));
 //Optimal population size by Goldberg
 int terminationPop = ceil( log(chromPop) );
 //Final Pareto front size increases logarithmically with population size
-int mutationRate = 99;
+int mutationRate = 50;
 //Chance mutation occurs as a percentage value from 1 to 100.  Can be changed if necessary.
 int sigCoefficient = ceil( maxRand * .005 );
 //How much greater the totalPotential/totalCost - availableFunds must be to be considered significantly dominant.  Prevents premature convergence over tiny differences in optimality.
@@ -69,7 +69,7 @@ void populate(struct investment investmentList[])
 {
 	for(int i = 0; i < collection_size; i++)
 	{
-		int exp = rand() % 4 + 1;
+		int exp = rand() % 2 + 1;
 		investmentList[i].cost = rand() % maxRand + minRand;
 		investmentList[i].risk = rand() % 99 + 1;
 		investmentList[i].potential = investmentList[i].cost + ceil( investmentList[i].cost * (pow( ((100 / (100 - investmentList[i].risk) ) ), exp) ) );
@@ -105,7 +105,7 @@ struct chromosome initialChromosome(struct investment investmentList[])
 			}
 			else
 			{
-				newChromosome.totalRisk += (investmentList[j].risk * investmentList[j].cost);
+				newChromosome.totalRisk += ( (investmentList[j].risk * investmentList[j].cost) / 100);
 				newChromosome.totalPotential += (investmentList[j].potential);
 			}
 			
@@ -191,7 +191,7 @@ struct chromosome generateChild(struct chromosome parent1, struct chromosome par
 			}
 			else
 			{
-				child.totalRisk += ceil( (investmentList[i].risk) * investmentList[i].cost );
+				child.totalRisk += ceil( ( (investmentList[i].risk) * investmentList[i].cost ) / 100 );
 				child.totalPotential += (investmentList[i].potential);
 			}
 			
@@ -268,7 +268,7 @@ int main ()
 		//Timeout.  Stop generating more children.
 		{
 			cout << "\nCOMPILE TIME LIMIT REACHED." << endl;
-			cout << "No solutions were found to be significantly more optimal than others within allotted time." << endl;
+			cout << "Could not find a set of " << terminationPop << " solutions significantly more optimal than others within allotted time." << endl;
 			timeEnd = clock();
 			timedOut = true;
 			break;
