@@ -16,10 +16,11 @@
 ////1. Maximize total potential
 ////2. Minimize total risk
 ////3. Minimize unused funds
+//Speed and optimality will be compared to the hill-climbing heuristic.
 
 using namespace std;
 
-const int collection_size = 69, minRand = 1, maxRand = 2000, timeLimit = 5;
+const int collection_size = 30, minRand = 1, maxRand = 2000, timeLimit = 5;
 //Parameters can be manipulated by user
 int availableFunds = ceil(maxRand * (collection_size / 4));
 //Available funds as a function of maximum random value and collection size
@@ -220,10 +221,78 @@ struct chromosome generateChild(struct chromosome parent1, struct chromosome par
 	return child;
 }
 
+struct chromosome hillClimb(struct chromosome climber, int position, struct investment investmentList[])
+{
+	struct chromosome option1 = climber, option2 = climber;
+	//Set both options identical to original candidate
+	//Modify second option at passed position
+
+	if (option2.sequence[position] == '1')
+	{
+		option2.sequence[position] = '0';
+	}
+	else
+	{
+		option2.sequence[position] = '1';
+	}
+
+	for (int i = 0; i < collection_size; i++)
+	{
+		
+		if (option2.sequence[i] == '1')
+		{
+			//Calculate cost, risk, and potential
+			option2.totalCost += investmentList[i].cost;
+
+			//Cannot exceed available funds
+			if (option2.totalCost > availableFunds)
+			//Return original candidate.
+			{
+				return option1;
+			}
+			else
+			{
+				option2.totalRisk += ceil( ( (investmentList[i].risk) * investmentList[i].cost ) / 100 );
+				option2.totalPotential += (investmentList[i].potential);
+			}
+			
+		}
+	}
+
+	//Calculate dominance
+
+	if (option2.totalRisk == 0)
+	//Prevents division by zero
+	{
+		option2.totalRisk = 1;
+	}
+
+	option2.unusedFunds = availableFunds - option2.totalCost;
+
+	option2.dominance = ceil( ( (option2.totalPotential / option2.totalRisk)  / sigCoefficient) - (option2.unusedFunds / (sigCoefficient) ) );
+
+	if (option2.dominance < 0)
+	{
+		option2.dominance = 0;
+	}
+
+	option2.dominant = false;
+	//Chromosomes are only considered dominant after the dominance values are compared to those of other chromosomes
+
+	if (option2.dominance > option1.dominance)
+	{
+		return option2;
+	}
+	else
+	{
+		return option1;
+	}
+}
+
 int main ()
 {
 
-	int collection[collection_size], maxDominance = 0, paretoCount, optionCount = 1, generationCount = 0;
+	int collection[collection_size], maxDominance = 0, paretoCount, optionCount = 1, generationCount = 0, geneticTime, hillClimbingTime;
 	struct chromosome parents[chromPop], children[chromPop];	
 	struct investment investmentList[collection_size];
 	bool done = false, timedOut = false;
@@ -236,7 +305,7 @@ int main ()
 	populate(investmentList);
 	//Populate collection of investments and print to terminal screen.
 	
-	cout << "Investment list created.  Optimizing portfolio..." << endl;
+	cout << "Investment list created.  Optimizing portfolio with genetic algorithm..." << endl;
 
 	for (int i = 0; i < chromPop; i++)
 	//Determine max dominance value
@@ -269,7 +338,6 @@ int main ()
 		{
 			cout << "\nCOMPILE TIME LIMIT REACHED." << endl;
 			cout << "Could not find a set of " << terminationPop << " solutions significantly more optimal than others within allotted time." << endl;
-			timeEnd = clock();
 			timedOut = true;
 			break;
 		}
@@ -357,8 +425,11 @@ int main ()
 			done = true;
 		}
 	}
+	timeEnd = clock();
+	geneticTime = (timeEnd - timeStart);
 	cout << endl;
-
+	
+	//Print genetic algorithm results
 	if (timedOut == false)
 	{
 		cout << "Final list of optimal investment combinations compiled successfully within time limit.  These are:\n" << endl;
@@ -384,6 +455,8 @@ int main ()
 				optionCount++;
 			}
 		}
+	cout << "Pareto termination size: " << terminationPop << endl;
+	cout << "Completed in " << generationCount << " generations and " << geneticTime << " clock ticks" << endl;
 	}
 	else
 	//Time exceeded before a significantly optimal solution was found.  Program will try to offer the best solutions it has found within time limit.
@@ -411,11 +484,106 @@ int main ()
 				optionCount++;
 			}
 		}
+	cout << "Pareto termination size: " << terminationPop << endl;
+	cout << "Completed in " << generationCount << " generations and " << geneticTime << " clock ticks" << endl;
 	}
+
+	//Now perform hill-climbing to compare results
+	cout << "\nOptimizing portfolio with hill-climbing heuristic..." << endl;
+	struct chromosome hillClimber = initialChromosome(investmentList);
+	//Start with a random assignment of investments
+
+	timedOut = false;
+	timeStart = clock(), timeEnd;
+
+	for (int i = 0; i < collection_size; i++)
+	//Perform hill-climbing until done or time limit exceeded.
+	{
+		if ( (clock() - timeStart) / CLOCKS_PER_SEC >= timeLimit)
+		//Timeout.  Stop hill-climbing.
+		{
+			cout << "\nCOMPILE TIME LIMIT REACHED." << endl;
+			cout << "Could not find local maxima solution within allotted time." << endl;
+			timedOut = true;
+			break;
+		}
+		hillClimber = hillClimb(hillClimber, i, investmentList);
+	}
+	timeEnd = clock();
+	hillClimbingTime = (timeEnd - timeStart);
+
+	//Print hill-climbing results
+	if (timedOut == false)
+	{
+		cout << "Local maxima solution found successfully within time limit:\n" << endl;
+		cout << "Investments: ";
+		for (int j = 0; j < collection_size; j++)
+		{
+			if (hillClimber.sequence[j] == '1')
+			{
+				cout << j+1 << " ";
+			}
+		}
+		cout << endl;
+		cout << "Total potential: $" << hillClimber.totalPotential << endl;
+		cout << "Total risk: $" << hillClimber.totalRisk << endl;
+		cout << "Unused funds: $" << hillClimber.unusedFunds << endl;
+		cout << "Dominance: " << hillClimber.dominance << endl;
+		cout << "Completed in " << hillClimbingTime << " clock ticks" << endl;
+		cout << endl;
+	}
+	else
+	//Time exceeded before a significantly optimal solution was found.  Program will try to offer the best solutions it has found within time limit.
+	{
+		cout << "Program offers the following solution:\n" << endl;
+		cout << "Investments: ";
+		for (int j = 0; j < collection_size; j++)
+		{
+			if (hillClimber.sequence[j] == '1')
+			{
+				cout << j+1 << " ";
+			}
+		}
+		cout << endl;
+		cout << "Total potential: $" << hillClimber.totalPotential << endl;
+		cout << "Total risk: $" << hillClimber.totalRisk << endl;
+		cout << "Unused funds: $" << hillClimber.unusedFunds << endl;
+		cout << "Dominance: " << hillClimber.dominance << endl;
+		cout << "Completed in " << hillClimbingTime << " clock ticks" << endl;
+		cout << endl;
+	}
+
+	//Compare optimality of genetic algorithm and hill-climbing
+	if (maxDominance > hillClimber.dominance)
+	{
+		cout << "Genetic algorithm found a more optimal solution within time limit." << endl;
+	}
+	else if (hillClimber.dominance > maxDominance)
+	{
+		cout << "Hill-climbing found a more optimal solution within time limit." << endl;
+	}
+	else
+	{
+		cout << "No significant difference in optimality was found between genetic algorithm and hill-climbing within time limit." << endl;
+	}
+
+	//Compare execution time of genetic algorithm and hill-climbing
+	if (geneticTime < hillClimbingTime)
+	{
+		cout << "Genetic algorithm finished " << (hillClimbingTime - geneticTime) << " clock ticks faster than hill-climbing.\n" << endl;
+	}
+	else if (hillClimbingTime < geneticTime)
+	{
+		cout << "Hill-climbing finished " << (geneticTime - hillClimbingTime) << " clock ticks faster than genetic algorithm.\n" << endl;
+	}
+	else
+	{
+		cout << "Genetic algorithm and hill-climbing both finished in " << geneticTime << " clock ticks.\n" << endl;
+	}
+
+	
 	cout << "Total funds available: $" << availableFunds << endl;	
 	cout << "Population size: " << chromPop << endl;
-	cout << "Pareto termination size: " << terminationPop << endl;
-	cout << "Completed in " << generationCount << " generations and " << (timeStart - timeEnd) << " clock ticks" << endl;
 
 	
 	return 0;
